@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Inverter Control Panel</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f0f0f0; text-align: center; }
+        nav { background-color: #333; padding: 10px; margin-bottom: 20px; }
+        nav button { background-color: #444; color: white; border: none; padding: 10px 20px; margin: 0 10px; cursor: pointer; font-size: 16px; border-radius: 8px 8px 0 0; transition: all 0.3s ease; }
+        nav button:hover { background-color: #666; }
+        nav button.active { background-color: #3498db; color: white; font-weight: bold; }
+        .tab-content { display: none; padding: 20px; background-color: white; max-width: 900px; margin: auto; border-radius: 5px; box-shadow: 0 0 10px #aaa; }
+        .tab-content.active { display: block; }
+        svg { background-color: #f9f9f9; border: 1px solid #ccc; margin: 0 auto 30px auto; display: block; max-width: 100%; height: auto; }
+        table { margin: 0 auto; border-collapse: collapse; width: 80%; }
+        table, th, td { border: 1px solid black; }
+        th, td { padding: 8px 12px; text-align: center; }
+        .alarm { padding: 8px; margin: 5px 0; list-style: none; font-weight: bold; border-radius: 5px; width: fit-content; margin-left: auto; margin-right: auto; font-size: 18px; }
+        .alarm.on { background-color: red; color: white; }
+        .alarm.off { background-color: lightgray; color: black; }
+        #alarms ul { padding-left: 0; list-style: none; text-align: center; margin: 0 auto; max-width: 300px; }
+        #alarms ul li { text-align: center; margin: 10px 0; width: 100%; }
+        .tabs { display: flex; justify-content: center; margin-bottom: 20px; gap: 10px; }
+        #alarmStatusDot { margin-left: 8px; font-size: 14px; vertical-align: middle; }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="tabs">
+        <button class="tab-button active" onclick="showTab('home', this)">Home</button>
+        <button class="tab-button" onclick="showTab('measure', this)">Measure</button>
+        <button class="tab-button" onclick="showTab('alarms', this)">Alarms <span id="alarmStatusDot"></span></button>
+    </div>
+
+    <div id="clock" style="font-size: 18px; font-weight: bold; margin: 10px;"></div>
+
+    <div id="home" class="tab-content active">
+        <h2>Inverter Block Diagram</h2>
+        <svg width="800" height="200" viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+            <rect x="50" y="70" width="150" height="60" fill="#eee" stroke="black" />
+            <text x="125" y="100" font-size="16" text-anchor="middle" dominant-baseline="middle">DC Input</text>
+            <rect x="300" y="10" width="200" height="50" fill="#a8d5a2" stroke="black" />
+            <text x="400" y="35" font-size="14" text-anchor="middle" dominant-baseline="middle">Bypass</text>
+            <line x1="200" y1="100" x2="300" y2="100" stroke="black" stroke-width="3" marker-end="url(#arrow)" />
+            <line x1="200" y1="70" x2="300" y2="35" stroke="green" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-green)" />
+            <line x1="500" y1="35" x2="600" y2="70" stroke="green" stroke-width="2" stroke-dasharray="6,4" marker-end="url(#arrow-green)" />
+            <rect x="300" y="70" width="200" height="60" fill="#cce5ff" stroke="black" />
+            <text x="400" y="100" font-size="16" text-anchor="middle" dominant-baseline="middle">Inverter (IGBTs)</text>
+            <line x1="500" y1="100" x2="600" y2="100" stroke="black" stroke-width="3" marker-end="url(#arrow)" />
+            <rect x="600" y="70" width="150" height="60" fill="#eee" stroke="black" />
+            <text x="675" y="100" font-size="16" text-anchor="middle" dominant-baseline="middle">AC Output</text>
+            <defs>
+                <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L10,5 L0,10 L2,5 z" fill="black" />
+                </marker>
+                <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto" markerUnits="strokeWidth">
+                    <path d="M0,0 L10,5 L0,10 L2,5 z" fill="green" />
+                </marker>
+            </defs>
+        </svg>
+    </div>
+
+    <div id="measure" class="tab-content">
+        <h2>Measurements</h2>
+        <table>
+            <thead><tr><th>Parameter</th><th>Value</th><th>Unit</th></tr></thead>
+            <tbody>
+                <tr><td>Input Voltage</td><td id="inputVoltage">-</td><td>V</td></tr>
+                <tr><td>Output Voltage</td><td id="outputVoltage">-</td><td>V</td></tr>
+                <tr><td>Battery Voltage</td><td id="batteryVoltage">-</td><td>V</td></tr>
+                <tr><td>Load</td><td id="loadPercent">-</td><td>%</td></tr>
+            </tbody>
+        </table>
+        <h3>Voltage & Load Trends</h3>
+        <canvas id="voltageChart" width="400" height="200"></canvas>
+        <canvas id="loadChart" width="400" height="200" style="margin-top: 20px;"></canvas>
+        <p id="lastUpdated" style="margin-top: 10px; font-style: italic; color: #555;"></p>
+    </div>
+
+    <div id="alarms" class="tab-content">
+        <h2>Alarms</h2>
+        <ul id="alarmList">
+            <li id="alarm-overload" class="alarm off">Overload</li>
+            <li id="alarm-battery" class="alarm off">Battery Low</li>
+            <li id="alarm-temperature" class="alarm off">Over Temperature</li>
+        </ul>
+    </div>
+
+    <script>
+        function showTab(tabId, button) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            button.classList.add('active');
+        }
+
+        const voltageData = { labels: [], datasets: [{ label: 'Voltage (V)', data: [], borderColor: 'blue', fill: false, tension: 0.1 }] };
+        const loadData = { labels: [], datasets: [{ label: 'Load (%)', data: [], borderColor: 'green', fill: false, tension: 0.1 }] };
+
+        const configVoltage = { type: 'line', data: voltageData, options: { responsive: true, scales: { x: { title: { display: true, text: 'Time' }}, y: { title: { display: true, text: 'Voltage (V)' }}}}};
+        const configLoad = { type: 'line', data: loadData, options: { responsive: true, scales: { x: { title: { display: true, text: 'Time' }}, y: { title: { display: true, text: 'Load (%)' }}}}};
+
+        const voltageChart = new Chart(document.getElementById('voltageChart'), configVoltage);
+        const loadChart = new Chart(document.getElementById('loadChart'), configLoad);
+
+        async function fetchInverterData() {
+            try {
+                const response = await fetch('/api/inverterdata');
+                const data = await response.json();
+                
+                document.getElementById('inputVoltage').textContent = data.inputVoltage;
+                document.getElementById('outputVoltage').textContent = data.outputVoltage;
+                document.getElementById('batteryVoltage').textContent = data.batteryVoltage;
+                document.getElementById('loadPercent').textContent = data.loadPercent;
+
+                document.getElementById('alarm-overload').className = 'alarm ' + (data.overload ? 'on' : 'off');
+                document.getElementById('alarm-battery').className = 'alarm ' + (data.batteryLow ? 'on' : 'off');
+                document.getElementById('alarm-temperature').className = 'alarm ' + (data.overTemperature ? 'on' : 'off');
+                
+                const anyAlarmOn = data.overload || data.batteryLow || data.overTemperature;
+                document.getElementById('alarmStatusDot').textContent = anyAlarmOn ? '🔴' : '🟢';
+
+                const now = new Date();
+                const timeLabel = now.getHours().toString().padStart(2, '0') + ':' + now.getMinutes().toString().padStart(2, '0') + ':' + now.getSeconds().toString().padStart(2, '0');
+                document.getElementById('lastUpdated').textContent = `Last updated: ${now.toLocaleTimeString()}`;
+
+                if (voltageData.labels.length >= 10) { voltageData.labels.shift(); voltageData.datasets[0].data.shift(); }
+                voltageData.labels.push(timeLabel);
+                voltageData.datasets[0].data.push(data.outputVoltage);
+                voltageChart.update();
+
+                if (loadData.labels.length >= 10) { loadData.labels.shift(); loadData.datasets[0].data.shift(); }
+                loadData.labels.push(timeLabel);
+                loadData.datasets[0].data.push(data.loadPercent);
+                loadChart.update();
+
+            } catch (err) { console.error("Failed to fetch data:", err); }
+        }
+
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('clock').textContent = 'Current Time: ' + now.toLocaleTimeString();
+        }
+
+        setInterval(fetchInverterData, 2000);
+        setInterval(updateClock, 1000);
+        fetchInverterData();
+        updateClock();
+    </script>
+</body>
+</html>
