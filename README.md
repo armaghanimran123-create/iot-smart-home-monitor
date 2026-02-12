@@ -5,7 +5,7 @@ This project is a **Full-Stack Web Application** designed to monitor industrial 
 
 It serves as a centralized control panel for operators, visualizing critical electrical parameters (Voltage, Load, Battery Health) and providing immediate visual alerts for system faults.
 
-![System Architecture Diagram](IoT_System_Architecture.drawio.png)
+![System Architecture Diagram](IoT_System_Architecture.drawio)
 
 ## ⚙️ Architecture
 The system follows a Client-Server architecture:
