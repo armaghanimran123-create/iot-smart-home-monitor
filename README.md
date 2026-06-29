@@ -1,48 +1,80 @@
 # GESS Inverter Monitoring Dashboard
 
-## 📌 Overview
-This project is a **Full-Stack Web Application** designed to monitor industrial power inverters in real-time, developed during my internship at **GESS / OES Ortadoğu Elektronik**.
-
-It serves as a centralized control panel for operators, visualizing critical electrical parameters (Voltage, Load, Battery Health) and providing immediate visual alerts for system faults.
+A full-stack real-time monitoring dashboard for industrial power inverters, developed during an internship at **GESS / OES Ortadoğu Elektronik**. Visualizes critical electrical parameters and provides immediate fault alerts for operators.
 
 ![System Architecture](IoT_System_Architecture.drawio.png)
 
-## ⚙️ Architecture
-The system follows a Client-Server architecture:
-* **Backend:** Python (Flask) acts as the API server, simulating sensor data streams (DC Bus, Grid Output, Battery Bank).
-* **Frontend:** HTML5/JavaScript fetches data asynchronously every 2 seconds to update the UI without page reloads.
-* **Visualization:** Chart.js renders dynamic, rolling-window graphs for trend analysis.
+## Overview
 
-## 🛠️ Tech Stack
-* **Backend:** Python, Flask (REST API).
-* **Frontend:** HTML, CSS (Responsive Dashboard), JavaScript (Fetch API).
-* **Data Viz:** Chart.js (Real-time plotting).
-* **Hardware Target:** Designed for deployment on Raspberry Pi 4 (connected to Inverter UART).
+The system connects to an industrial inverter over UART serial and streams live readings (voltage, load, battery status) to a web dashboard that updates every 2 seconds without page reloads. A simulation mode runs automatically when no hardware is connected, making it fully testable on any machine.
 
-## 🚀 Key Features
-* **Real-time Polling:** Updates system status every 2 seconds via AJAX.
-* **Fault Detection:** Visual alarm indicators for "Overload", "Battery Low", and "Over Temperature" states.
-* **Trend Analysis:** Live graphing of Output Voltage stability and Load Percentage over time.
-* **Responsive Design:** Optimized for tablet/desktop views in industrial environments.
+## Architecture
 
-## 🔧 How to Run Locally
-1.  **Clone the repository:**
-    ```bash
-    git clone [https://github.com/armaghanimran123-create/iot-smart-home-monitor.git](https://github.com/armaghanimran123-create/iot-smart-home-monitor.git)
-    cd iot-smart-home-monitor
-    ```
+Client-Server over HTTP:
 
-2.  **Install Dependencies:**
-    ```bash
-    pip install -r requirements.txt
-    ```
+- **Backend:** Python (Flask) serves the dashboard and exposes a REST API endpoint that reads inverter data over UART
+- **Frontend:** HTML/JavaScript polls the API every 2 seconds via AJAX (Fetch API) and updates the UI in place
+- **Visualization:** Chart.js renders rolling-window live graphs for voltage stability and load percentage trends
+- **Hardware:** Designed for deployment on Raspberry Pi 4 connected to inverter UART (9600 baud, CSV format)
 
-3.  **Start the Server:**
-    ```bash
-    python inverter_server.py
-    ```
+## Tech Stack
 
-4.  **View Dashboard:**
-    Open your browser and go to `http://127.0.0.1:5000/`.
+- **Backend:** Python, Flask
+- **Frontend:** HTML, CSS, JavaScript (Fetch API)
+- **Data Visualization:** Chart.js
+- **Serial Communication:** pyserial
+- **Hardware Target:** Raspberry Pi 4
 
-> **Note:** The current version runs in "Simulation Mode," generating synthetic sensor data to demonstrate the UI capabilities without requiring physical connection to a GESS inverter.
+## Features
+
+- **Real-time polling:** Dashboard updates every 2 seconds via AJAX — no page reload
+- **UART integration:** Reads live CSV data from inverter serial port (`/dev/ttyUSB0` on Linux, `COM3` on Windows)
+- **Simulation mode:** Automatically activates when no hardware is connected — no code changes needed
+- **Fault detection:** Visual alarm indicators for Overload, Battery Low, and Over Temperature states
+- **Trend graphs:** Live rolling Chart.js plots for output voltage and load percentage
+- **Graceful fallback:** If UART read fails mid-session, simulation kicks in for that frame rather than crashing
+
+## UART Data Format
+
+The server expects one CSV line per read from the inverter:
+
+```
+outputVoltage,inputVoltage,batteryVoltage,loadPercent,overload,batteryLow,overTemp
+```
+
+Example:
+```
+228,415,49,73,0,0,1
+```
+
+Fault flags are `1` (active) or `0` (normal). Adjust `UART_PORT` and `UART_BAUD` in `inverter_server.py` to match your hardware.
+
+## How to Run
+
+**Clone the repository:**
+```bash
+git clone https://github.com/armaghanimran123-create/iot-smart-home-monitor.git
+cd iot-smart-home-monitor
+```
+
+**Install dependencies:**
+```bash
+pip install -r requirements.txt
+```
+
+**Start the server:**
+```bash
+python inverter_server.py
+```
+
+**View dashboard:** Open `http://127.0.0.1:5000/` in your browser.
+
+The terminal will print either:
+- `Connected to inverter on /dev/ttyUSB0` — real hardware mode
+- `UART not available. Running in Simulation Mode.` — no hardware connected
+
+## How to Deploy on Raspberry Pi
+
+1. Connect inverter UART TX → RPi GPIO pin 15 (RX), GND → GND
+2. Set `UART_PORT = '/dev/ttyAMA0'` in `inverter_server.py`
+3. Run the server — it will automatically detect the hardware and switch out of simulation mode
